@@ -1,270 +1,989 @@
 ---
 name: slp-implement-spec
-description: Implement a Matt Pocock specification and ticket graph using Supervisor-Lead-Peer governance, Paseo agent profiles, isolated worktrees and independent review.
+description: Execute a specification and ticket graph using Supervisor-Lead-Peer governance, Paseo Agent Profiles, evidence-driven investigation, isolated worktrees, scope ownership, integration, and independent review.
 disable-model-invocation: true
 ---
 
 # SLP Implement Spec
 
-Implement a completed /to-spec + /to-tickets graph using SLP
-governance and Paseo orchestration.
+Execute an approved specification and ticket graph using
+Supervisor-Lead-Peer governance.
 
-The current agent acts as Lead.
+The current agent acts as the SLP Lead.
 
-Before beginning:
+The Lead owns execution orchestration.
+
+The Supervisor owns high-level technical direction,
+architecture-level escalation, and communication with the Human.
+
+Peers own bounded technical work.
+
+This skill coordinates execution. It does not replace engineering
+discipline skills such as:
+
+- `slp-governance`
+- `research`
+- `prototype`
+- `tdd`
+- `diagnosing-bugs`
+- `code-review`
+
+---
+
+# 1. Preconditions
+
+Before execution begins:
 
 1. Load `slp-governance`.
 2. Read `docs/agents/WORKSTATE.md`.
 3. Read `docs/agents/issue-tracker.md`.
-4. Read relevant GLOSSARY and ADR files.
-5. Read the full spec.
-6. Read all tickets and blocking relationships.
-7. Read available Paseo Agent Profiles and their notes.
+4. Read the complete approved specification.
+5. Read all tickets and blocking relationships.
+6. Read relevant:
+   - GLOSSARY
+   - ADRs
+   - architecture documentation
+   - repository instructions
+7. Read available Paseo Agent Profiles and their `When to use`
+   guidance.
+8. Identify Human Constraints already established by the
+   Supervisor.
+9. Identify current System Invariants.
+10. Identify Current Design Decisions.
 
-Do not begin ticket implementation before understanding the
-complete dependency graph.
+Do not begin implementation before understanding the complete
+dependency graph.
 
-## Phase 1: Initialize
+Do not reinterpret Human Constraints as implementation choices.
 
-Determine:
+---
 
-- integration branch
+# 2. Execution Authority
+
+The Lead owns:
+
+- WORKSTATE
 - ticket graph
+- dependency graph
 - ready frontier
-- shared mutable surfaces
-- human constraints
-- current design decisions
-- relevant system invariants
+- investigation state
+- mutable scope ownership
+- Peer selection
+- worktree creation
+- execution coordination
+- integration
+- verification
+- review coordination
+- execution evidence
 
-Write this state into:
+The Lead should delegate technical work rather than perform
+Peer-owned work directly.
 
-`docs/agents/WORKSTATE.md`
+The Lead may create technical Peers.
 
-## Phase 2: Detect Scope Conflicts
+Peers must not create or coordinate additional agents.
 
-Before parallelizing tickets, identify overlapping mutable
-surfaces.
+Architecture decisions outside Lead authority must be escalated
+to the Supervisor.
 
-Tickets which need to modify the same ownership scope must not
-run concurrently unless one is explicitly read-only there.
+Changes to Human Constraints must be escalated through the
+Supervisor to the Human.
 
-Prefer serial execution when:
+---
+
+# 3. Initialize WORKSTATE
+
+Before launching any Peer, initialize or refresh WORKSTATE.
+
+Record:
+
+## Goal
+
+The implementation goal derived from the approved specification.
+
+## Human Constraints
+
+Constraints established by the Human through the Supervisor.
+
+These cannot be changed by the Lead or Peers.
+
+## System Invariants
+
+Technical properties that must remain valid.
+
+## Current Design Decisions
+
+Currently accepted technical decisions.
+
+These may be reopened when new evidence justifies reconsideration.
+
+## Ticket Graph
+
+For each ticket record:
+
+- identifier
+- goal
+- blockers
+- status
+- owner
+- mutable scope
+- risk
+- evidence
+
+Valid statuses:
+
+- READY
+- INVESTIGATING
+- RUNNING
+- BLOCKED
+- CHANGE_REQUEST
+- REVIEW
+- DONE
+
+## Investigation State
+
+Track Research and Prototype work separately.
+
+For each investigation record:
+
+- ID
+- type: RESEARCH or PROTOTYPE
+- question
+- related ticket
+- owner
+- status
+- evidence
+- conclusion
+- resulting decision
+
+## Scope Ownership
+
+For mutable production scope record:
+
+- path/module
+- owner
+- ticket
+- acquired time
+
+Invariant:
+
+At any moment each mutable production scope has at most one owner.
+
+---
+
+# 4. Build the Ready Frontier
+
+A ticket is logically READY when all blocking tickets are DONE.
+
+However, logical readiness does not automatically mean it should
+be implemented immediately.
+
+For every READY ticket, determine:
+
+1. Are requirements sufficiently understood?
+2. Are technical assumptions sufficiently verified?
+3. Is feasibility sufficiently established?
+4. Is there an unexplained failure involved?
+5. Is the implementation scope known?
+6. Does mutable scope overlap with another active owner?
+7. What level of technical risk exists?
+
+The effective execution frontier is:
+
+logical ready frontier
+∩
+knowledge ready
+∩
+feasibility ready
+∩
+ownership compatible
+
+Do not start production implementation when a material uncertainty
+remains unresolved.
+
+---
+
+# 5. Classify the Task
+
+Before creating a Peer, classify the primary uncertainty.
+
+Use the following decision model.
+
+## 5.1 Knowledge Unknown → Research
+
+Use `peer-research` when the main unanswered question is:
+
+"What do we need to know before deciding or implementing?"
+
+Examples:
+
+- unfamiliar repository behaviour
+- unclear framework capability
+- external API behaviour
+- evaluating technical alternatives
+- locating an existing architecture pattern
+- understanding constraints
+- validating documentation assumptions
+- determining whether an existing component already solves the need
+
+Research should gather evidence.
+
+Research should not implement the final production solution.
+
+Typical flow:
+
+Research
+→ decision
+→ Implement
+
+---
+
+## 5.2 Feasibility Unknown → Prototype
+
+Use `peer-prototype` when the main unanswered question is:
+
+"Does this approach actually work under relevant conditions?"
+
+Use when documentation or static reasoning is insufficient.
+
+Examples:
+
+- proof-of-concept
+- integration spike
+- SDK runtime validation
+- concurrency experiment
+- protocol experiment
+- performance feasibility
+- risky library behaviour
+- architecture assumption validation
+
+Prototype code is disposable evidence by default.
+
+Do not silently promote prototype code into production code.
+
+Typical flow:
+
+Prototype
+→ evidence
+→ decision
+→ Implement
+
+or:
+
+Research
+→ Prototype
+→ Implement
+
+---
+
+## 5.3 Implementation Known → Implement
+
+When requirements and implementation direction are sufficiently
+established, choose an implementation Peer.
+
+### `peer-implement-fast`
+
+Use when:
+
+- scope is well bounded
+- requirements are clear
+- approach is established
+- technical risk is low or medium
+
+Suitable for:
+
+- CRUD
+- endpoints
+- handlers
+- DTOs
+- mappings
+- ordinary validation
+- straightforward integration
+- ordinary tests
+- low-risk refactoring
+
+### `peer-implement-quality`
+
+Use when the work affects:
+
+- core domain logic
+- security
+- authentication
+- authorization
+- persistence
+- transactions
+- concurrency
+- distributed systems
+- public contracts
+- cross-module behaviour
+- important migrations
+- data integrity
+- architecture-sensitive implementation
+
+Prefer this profile when correctness is more important than
+throughput or cost.
+
+---
+
+# 6. Existing Failure → Debug
+
+Use `peer-debug` when existing behaviour is broken and the root
+cause is not established.
+
+Do not send an unexplained failure directly to an implementation
+Peer.
+
+Expected flow:
+
+reproduce
+→ collect evidence
+→ determine root cause
+→ define correction
+→ implementation task
+→ regression test
+
+Use the project's `diagnosing-bugs` skill.
+
+Debugging should establish the cause.
+
+Implementation should apply the correction.
+
+These may be separate Peer assignments when appropriate.
+
+---
+
+# 7. Mechanical Work → Cheap Peer
+
+Use `peer-cheap` only for deterministic, low-risk work.
+
+Examples:
+
+- rename
+- formatting
+- documentation
+- repetitive DTO creation
+- mappings
+- boilerplate
+- simple configuration
+- mechanical test expansion
+- predictable repetitive migration
+
+Do not use `peer-cheap` for:
+
+- architecture
+- security
+- concurrency
+- destructive migrations
+- public contracts
+- distributed state
+- complex domain behaviour
+- ambiguous requirements
+
+If the Peer discovers that significant reasoning is required,
+expect CHANGE_REQUEST and reclassify the task.
+
+---
+
+# 8. Research Execution
+
+When Research is required:
+
+1. Create an Investigation entry in WORKSTATE.
+2. Set related ticket to `INVESTIGATING` when the ticket cannot
+   proceed without the result.
+3. Create `peer-research`.
+4. Provide:
+   - research question
+   - ticket pointer
+   - spec pointer
+   - relevant repository pointers
+   - known assumptions
+   - evidence requirements
+5. Prefer read-only execution.
+6. Do not acquire production mutable scope unless absolutely
+   required.
+
+Research output must distinguish:
+
+- verified fact
+- repository observation
+- hypothesis
+- recommendation
+
+Expected result:
+
+- DONE
+- BLOCKED
+- CHANGE_REQUEST
+
+On DONE:
+
+- record evidence
+- record conclusion
+- update Current Design Decisions if appropriate
+- determine whether:
+  - implementation can proceed
+  - prototype is required
+  - Supervisor escalation is required
+
+Research findings do not automatically become architecture
+decisions.
+
+---
+
+# 9. Prototype Execution
+
+When Prototype is required:
+
+1. Create an Investigation entry in WORKSTATE.
+2. Set related ticket to `INVESTIGATING` when appropriate.
+3. Create `peer-prototype`.
+4. Define one concrete question the experiment must answer.
+5. Define success/failure criteria.
+6. Prefer isolated prototype scope.
+
+Prototype work should normally use:
+
+- scratch directory
+- temporary branch
+- dedicated test harness
+- disposable experiment
+
+Avoid modifying production implementation.
+
+Prototype output must report:
+
+- question tested
+- experimental setup
+- observed result
+- limitations
+- evidence
+- conclusion
+- recommendation
+
+Prototype code is not production code by default.
+
+If the experiment succeeds:
+
+→ record evidence
+→ decide production implementation
+
+If the experiment fails:
+
+→ reconsider approach
+→ Research if needed
+→ CHANGE_REQUEST if assumptions are invalid
+
+---
+
+# 10. Mutable Scope Analysis
+
+Before production implementation, identify mutable scope.
+
+Examples:
+
+- `src/Auth/**`
+- `src/Billing/**`
+- database migration files
+- shared interfaces
+- package manifests
+- deployment configuration
+
+Detect conflicts before parallelization.
+
+Serialize work when tickets need to modify the same shared
+surface, especially:
 
 - same database migration
-- same shared configuration
 - same public interface
+- same central configuration
 - same core abstraction
-- same generated file
+- same generated artifact
 - same package manifest
+- same schema object
 
-## Phase 3: Select Worker Profile
+Two tickets may be dependency-independent but still
+ownership-conflicting.
 
-Classify each READY ticket.
+Do not parallelize them merely because the ticket graph allows it.
 
-Use `peer-implement-quality` for:
+---
 
-- architecture-sensitive code
-- domain logic
-- persistence
-- concurrency
-- authentication / authorization
-- cross-module behavior
-- public contracts
+# 11. Acquire Ownership
 
-Use `peer-debug` for investigation of existing broken behaviour.
+Before launching an implementation Peer:
 
-Use `peer-cheap` for low-risk mechanical tasks.
+1. determine mutable production scope
+2. verify no conflicting active owner
+3. update WORKSTATE
+4. set ticket to RUNNING
+5. assign owner
+6. record acquired scope
 
-Otherwise use `peer-implement-fast`.
+Only then create the Peer.
 
-Read profile notes before creating an agent.
+Reading outside owned scope is allowed.
 
-Do not select a provider/model directly when a matching profile
-exists.
+Writing outside owned scope is not allowed unless the Lead:
 
-## Phase 4: Acquire Ownership
+- transfers ownership
+- grants explicit temporary authorization
+- creates separate dependent work
 
-Before launching a worker, update WORKSTATE:
+---
 
-- Ticket → RUNNING
-- Owner → agent identity
-- Scope → acquired
+# 12. Create the Peer
 
-No two running agents may own the same mutable scope.
+Use the matching Paseo Agent Profile.
 
-## Phase 5: Delegate
+Do not select provider or LLM directly when an appropriate
+profile exists.
 
-Create a Paseo worker in an isolated worktree.
+The profile determines execution characteristics.
 
-The Peer prompt must include pointers, not copied context.
+OmniRoute determines the underlying model/provider route.
 
-Prompt shape:
+The Lead should reason in terms of roles, not raw model names.
+
+---
+
+# 13. Peer Assignment Prompt
+
+Provide pointers instead of copying unnecessary context.
+
+Use this structure:
 
 Goal:
-<ticket goal>
+<ticket or investigation goal>
 
 Ticket:
 <ticket pointer>
 
-Spec:
+Specification:
 <spec pointer>
 
 Owned mutable scope:
-<scope>
+<scope or NONE for read-only Research>
 
 Read-only related scope:
 <scope>
 
-Human constraints:
-<pointer to WORKSTATE section>
+Human Constraints:
+<pointer to WORKSTATE>
 
-Current design decisions:
-<pointer to WORKSTATE section>
+System Invariants:
+<pointer to WORKSTATE>
 
-Relevant:
+Current Design Decisions:
+<pointer to WORKSTATE>
+
+Relevant references:
 - GLOSSARY
 - ADR
+- research findings
+- prototype findings
 - previous commits
-- research
+- related tests
 
 Instructions:
 
-- Load slp-governance.
-- Use the TDD skill for implementation.
-- Stay inside owned mutable scope.
+- Load `slp-governance`.
+- Follow the skill appropriate to your role.
+- Stay within assigned mutable scope.
 - Investigate independently.
-- Do not workaround contradictory architecture assumptions.
+- Use repository evidence.
+- Do not silently workaround contradictory assumptions.
+- Do not create or coordinate other agents.
 - Return DONE, BLOCKED or CHANGE_REQUEST.
 
-## Phase 6: Process Peer Result
+For implementation:
 
-### DONE
+- use `tdd`
+
+For debugging:
+
+- use `diagnosing-bugs`
+
+For research:
+
+- use `research`
+
+For prototype:
+
+- use `prototype`
+
+For review:
+
+- use `code-review` guidance where applicable
+
+---
+
+# 14. Process Peer Results
+
+Every Peer returns one primary state.
+
+## DONE
+
+### Research DONE
+
+Record:
+
+- findings
+- evidence
+- conclusion
+- confidence/limitations
+- resulting decision
+
+Then determine:
+
+Research
+→ Implement
+
+or:
+
+Research
+→ Prototype
+
+or:
+
+Research
+→ Supervisor escalation
+
+### Prototype DONE
+
+Record:
+
+- experiment
+- observed behaviour
+- evidence
+- limitations
+- conclusion
+
+Then determine production direction.
+
+Do not merge disposable prototype code unless explicitly promoted.
+
+### Implementation DONE
 
 Verify:
 
 - acceptance criteria
 - relevant tests
-- branch is current with integration tip
-- scope stayed within ownership
+- scope compliance
+- branch state
+- integration compatibility
 
-Then merge via an integration/merger agent or controlled merge.
+Then:
 
-Update WORKSTATE:
+1. merge safely
+2. release ownership
+3. set ticket DONE
+4. record commit
+5. record evidence
+6. recompute ready frontier
 
-- ticket → DONE
-- release ownership
-- record commit/evidence
+### Debug DONE
 
-Recompute ready frontier.
+Record root cause and evidence.
 
-### BLOCKED
+If correction remains:
 
-Update:
+→ create/update implementation work.
 
-- ticket → BLOCKED
+Do not confuse root-cause discovery with final implementation.
+
+---
+
+# 15. BLOCKED
+
+On BLOCKED:
+
+Record:
+
+- ticket/investigation
 - blocker
-- dependency graph if required
+- evidence
+- affected dependency
+- required next action
 
-Release ownership if no further work can proceed.
+Determine whether the blocker requires:
 
-### CHANGE_REQUEST
+- another ticket
+- Research
+- Prototype
+- Debug
+- ownership transfer
+- Supervisor escalation
 
-Lead evaluates evidence.
+Release mutable ownership when continued work cannot proceed.
 
-If change is inside the same ticket and ownership scope:
+Do not leave abandoned ownership active.
 
-- update ticket
-- record decision
-- continue Peer
+---
 
-If change affects another Peer scope:
+# 16. CHANGE_REQUEST
 
-- coordinate with current owner
-- create or update dependent ticket
+CHANGE_REQUEST means available evidence contradicts the current
+scope, assumption, dependency, or design.
 
-If change affects architecture or system invariant:
+Lead evaluates the evidence.
 
-- create Supervisor agent using `slp-supervisor`
-- provide evidence and pointers
-- request a decision, not implementation
+## Local change
 
-If Supervisor identifies a Human Constraint change:
+If entirely inside the same ticket and owned scope:
 
-- stop affected work
-- escalate to Human
+→ update execution details
+→ record decision
+→ continue work
 
-Never silently convert a Human Constraint into a technical
-decision.
+## Cross-scope change
 
-## Phase 7: Continue Frontier
+If another active scope is affected:
 
-After every completed or changed ticket:
+→ coordinate with its owner
+→ add/update dependency
+→ create separate work if necessary
 
-1. refresh dependency graph
-2. compute READY tickets
-3. check ownership conflicts
-4. launch additional workers where safe
+Do not allow the requesting Peer to silently modify another
+owner's scope.
+
+## Architecture/System Invariant change
+
+Escalate to `slp-supervisor`.
+
+Provide:
+
+- existing decision
+- contradictory evidence
+- affected scope
+- alternatives
+- smallest viable correction
+- consequences of keeping current design
+
+Request a decision.
+
+Do not ask Supervisor to perform implementation.
+
+## Human Constraint change
+
+Stop affected execution.
+
+Escalate through Supervisor.
+
+Only the Human may approve changes to Human Constraints.
+
+---
+
+# 17. Supervisor Interaction
+
+Use Supervisor for:
+
+- architecture decisions
+- System Invariant changes
+- cross-module contract changes
+- security boundary changes
+- persistence architecture changes
+- distributed consistency decisions
+- externally visible API redesign
+- irreversible technical decisions
+
+Do not escalate:
+
+- variable naming
+- ordinary refactoring
+- local implementation choices
+- private helper structure
+- test organization
+- formatting
+- routine library usage
+
+The Lead owns execution.
+
+The Supervisor owns high-level technical direction.
+
+---
+
+# 18. Recompute the Frontier
+
+After every:
+
+- Research completion
+- Prototype completion
+- ticket completion
+- blocker resolution
+- CHANGE_REQUEST decision
+- integration event
+
+recompute:
+
+1. logical dependencies
+2. unresolved knowledge uncertainty
+3. unresolved feasibility uncertainty
+4. ownership conflicts
+5. risk classification
+
+Then identify the new effective ready frontier.
+
+---
+
+# 19. Parallelism Policy
 
 Prefer useful parallelism over maximum parallelism.
 
-Do not launch multiple agents merely because capacity exists.
+Parallelize when:
 
-## Phase 8: Integration Verification
+- dependencies permit it
+- mutable scopes do not overlap
+- one task does not require evidence from another
+- architecture assumptions are sufficiently stable
 
-Once all implementation tickets are DONE:
+Good parallelization:
 
-Run:
+Research A
+Research B
+Independent implementation scopes
+Independent reviews
+
+Bad parallelization:
+
+Prototype and production implementation of the same unresolved idea
+
+Two migrations modifying the same schema object
+
+Two Peers modifying the same public interface
+
+Implementation depending on unresolved architecture Research
+
+Do not launch agents merely because capacity is available.
+
+---
+
+# 20. Integration Verification
+
+After implementation tickets are DONE, run appropriate repository
+verification.
+
+Examples:
 
 - build
+- compile
 - typecheck
+- lint
 - focused tests
+- integration tests
+- architecture tests
 - full relevant test suite
 
-Record evidence in WORKSTATE.
+Record:
 
-## Phase 9: Independent Review
+- command
+- result
+- timestamp if useful
+- relevant failure/passing evidence
 
-Determine which model family performed most implementation.
+Do not proceed to final review with unexplained verification
+failures.
 
-Prefer an independent reviewer from another family.
+---
 
-If implementation was primarily GPT:
-use `peer-review-gemini`.
+# 21. Independent Review
 
-If implementation was primarily Gemini:
-use `peer-review-gpt`.
+After integration verification, perform independent review.
 
-Run two independent review axes:
+Use:
 
-1. Standards review
-2. Spec/acceptance review
+- `peer-review-gpt`
+- `peer-review-gemini`
 
-Reviewers are read-only.
+Prefer at least one reviewer from a model family different from
+the dominant implementation family.
 
-Aggregate findings.
+Run two independent review axes where practical:
 
-## Phase 10: Fix Review Findings
+## Standards Review
 
-Create a single implementation worker for accepted findings.
+Review against:
 
-Any behavior-changing fix must follow TDD.
+- repository conventions
+- architecture rules
+- maintainability
+- safety
+- quality
+- tests
 
-Re-run verification.
+## Spec Review
 
-## Phase 11: Complete
+Review against:
 
-Confirm:
+- specification
+- acceptance criteria
+- user-visible behaviour
+- missing requirements
+- regression risk
 
-- all tickets DONE
-- no unresolved blockers
-- no unresolved CHANGE_REQUEST
-- no active ownership
-- integration tests pass
-- review findings resolved
+Reviewers should normally be read-only.
 
-Update WORKSTATE.
+Do not allow reviewers to silently fix findings.
 
-If the configured issue tracker uses PRs, continue with `/pr`.
+---
 
-Do not remove historical evidence from WORKSTATE until the
-feature is merged.
+# 22. Process Review Findings
+
+Classify findings:
+
+- confirmed defect
+- probable risk
+- optional improvement
+- stylistic preference
+
+Accept findings based on evidence.
+
+For accepted implementation changes:
+
+→ create a fix task
+→ assign appropriate implementation Peer
+→ use TDD for behaviour changes
+→ verify again
+
+If review reveals architecture contradiction:
+
+→ CHANGE_REQUEST
+→ Supervisor
+
+Do not expand feature scope simply because a reviewer suggests
+unrelated improvements.
+
+---
+
+# 23. Final Completion Conditions
+
+The workstream is complete only when:
+
+- all required tickets are DONE
+- all blocking investigations are resolved
+- no unresolved BLOCKED state remains
+- no unresolved CHANGE_REQUEST remains
+- no active mutable ownership remains
+- integration verification passes
+- required review findings are resolved
+- Human Constraints remain satisfied
+
+Update WORKSTATE with final execution status.
+
+Record:
+
+- integrated commits
+- final verification evidence
+- review result
+- remaining non-blocking recommendations
+
+If repository workflow requires a PR, continue with `/pr`.
+
+After merge/completion, use `/retro` when useful to improve:
+
+- profile selection
+- routing rules
+- ticket quality
+- skill instructions
+- orchestration policy
+- model allocation
